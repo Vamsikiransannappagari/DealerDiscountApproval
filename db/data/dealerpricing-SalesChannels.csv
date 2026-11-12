@@ -1,0 +1,5 @@
+ID,channelCode,channelName,description,status,createdAt,createdBy,modifiedAt,modifiedBy
+5fd39c5b-5e84-5504-a7f5-208cfabc8b29,CHN-01,Retail,Authorized retail dealerships,Active,2026-01-07T10:00:00Z,priya.nair@autodealer.in,2026-04-08T12:00:00Z,rahul.sharma@autodealer.in
+edf3983b-3b1b-5a85-832b-8dba41759fa2,CHN-02,Fleet,Corporate and fleet sales,Active,2026-01-08T10:00:00Z,rahul.sharma@autodealer.in,2026-04-09T12:00:00Z,anil.kumar@autodealer.in
+0b354cea-9a17-50d1-971f-dadb2cc37cb0,CHN-03,Corporate,Direct corporate accounts,Active,2026-01-09T10:00:00Z,anil.kumar@autodealer.in,2026-04-10T12:00:00Z,sneha.reddy@autodealer.in
+0c01545d-b76d-5011-926c-9e6116f39219,CHN-04,Government,Government and public-sector tenders,Active,2026-01-10T10:00:00Z,sneha.reddy@autodealer.in,2026-04-11T12:00:00Z,karthik.iyer@autodealer.in

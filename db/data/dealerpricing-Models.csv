@@ -1,0 +1,11 @@
+ID,modelCode,modelName,productFamily,description,status,createdAt,createdBy,modifiedAt,modifiedBy
+d49df870-4e96-5d81-8f48-b7de5f7f6bce,MDL-01,Aural X,Premium SUV,2.0L turbo petrol SUV,Active,2026-01-05T09:30:00Z,priya.nair@autodealer.in,2026-02-10T11:00:00Z,rahul.sharma@autodealer.in
+895b5901-24d7-533e-a859-712e9bfe85bb,MDL-02,Aura ZX,Premium sedan,1.5L turbo petrol sedan,Active,2026-01-06T09:30:00Z,rahul.sharma@autodealer.in,2026-02-11T11:00:00Z,anil.kumar@autodealer.in
+b4d93b9d-d372-5936-ac64-1d7170f9d7d8,MDL-03,Trek 42,Adventure SUV,2.0L diesel AWD SUV,Active,2026-01-07T09:30:00Z,anil.kumar@autodealer.in,2026-02-12T11:00:00Z,sneha.reddy@autodealer.in
+15324e22-0c06-52ed-88ca-de9590f4058b,MDL-04,Spark S,Compact hatchback,1.2L petrol hatchback,Active,2026-01-08T09:30:00Z,sneha.reddy@autodealer.in,2026-02-13T11:00:00Z,karthik.iyer@autodealer.in
+2b757bb8-f1d7-57bf-a4f3-c2ad475fbcc4,MDL-05,Spark Plus,Compact hatchback,1.0L turbo petrol hatchback,Active,2026-01-09T09:30:00Z,karthik.iyer@autodealer.in,2026-02-14T11:00:00Z,meera.joshi@autodealer.in
+fad98438-1514-56f5-8866-97ad5793856a,MDL-06,Volt LT,Electric SUV,60 kWh electric SUV,Active,2026-01-10T09:30:00Z,meera.joshi@autodealer.in,2026-02-15T11:00:00Z,arjun.menon@autodealer.in
+d624df54-dd4c-5d8d-a8f3-91d954e5f39d,MDL-07,Volt MX,Electric premium SUV,82 kWh electric SUV,Active,2026-01-11T09:30:00Z,arjun.menon@autodealer.in,2026-02-16T11:00:00Z,divya.rao@autodealer.in
+ca591d05-141a-5e12-b373-71b7b70a18dd,MDL-08,Haul Pro,Light commercial vehicle,2.5L diesel pickup,Active,2026-01-12T09:30:00Z,divya.rao@autodealer.in,2026-02-17T11:00:00Z,vijay.patel@autodealer.in
+cd5d60ec-afad-5f58-986b-d6faac959741,MDL-09,Haul Van,Commercial van,2.2L diesel passenger/cargo van,Active,2026-01-13T09:30:00Z,vijay.patel@autodealer.in,2026-02-18T11:00:00Z,neha.kulkarni@autodealer.in
+b70c6d1d-83df-5c72-a7e8-b07586b3044b,MDL-10,Aural X Hybrid,Premium hybrid SUV,1.5L hybrid SUV,Active,2026-01-14T09:30:00Z,neha.kulkarni@autodealer.in,2026-02-19T11:00:00Z,priya.nair@autodealer.in

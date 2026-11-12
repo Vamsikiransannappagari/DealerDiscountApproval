@@ -1,0 +1,55 @@
+
+{
+    "name": "dealerdiscountapproval",
+    "version": "1.0.0",
+    "description": "Pricing and Dealer Discount Approval",
+    "license": "ISC",
+    "author": "",
+    "type": "commonjs",
+    "main": "index.js",
+    "scripts": {
+        "start": "cds-serve",
+        "watch": "cds watch"
+    },
+    "cds": {
+        "requires": {
+            "auth": {
+                "kind": "mocked",
+                "users": {
+                    "*": false,
+                    "alice": {
+                        "password": "alice",
+                        "roles": ["PricingAnalyst"]
+                    },
+                    "bob": {
+                        "password": "bob",
+                        "roles": ["DealerSalesUser"]
+                    },
+                    "charlie": {
+                        "password": "charlie",
+                        "roles": ["RegionalManager"]
+                    },
+                    "david": {
+                        "password": "david",
+                        "roles": ["FinanceApprover"]
+                    },
+                    "admin": {
+                        "password": "admin",
+                        "roles": ["PricingAdministrator"]
+                    }
+                }
+            }
+        },
+        "server": {
+            "index": true
+        }
+    },
+    "dependencies": {
+        "@cap-js/hana": "^2.8.3",
+        "@sap/cds": "^9"
+    },
+    "devDependencies": {
+        "@cap-js/sqlite": "^2.4.3",
+        "@sap/cds-dk": "^9.9.8"
+    }
+}
