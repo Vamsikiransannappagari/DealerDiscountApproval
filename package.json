@@ -1,4 +1,3 @@
-
 {
     "name": "dealerdiscountapproval",
     "version": "1.0.0",
@@ -12,6 +11,12 @@
         "watch": "cds watch"
     },
     "cds": {
+        "agents":{
+            "retention":"7d",
+            "quotas":{
+                "maxLLMCallTimeout": "60s"
+            }
+        },
         "requires": {
             "auth": {
                 "kind": "mocked",
@@ -19,24 +24,41 @@
                     "*": false,
                     "alice": {
                         "password": "alice",
-                        "roles": ["PricingAnalyst"]
+                        "roles": [
+                            "PricingAnalyst"
+                        ]
                     },
                     "bob": {
                         "password": "bob",
-                        "roles": ["DealerSalesUser"]
+                        "roles": [
+                            "DealerSalesUser"
+                        ]
                     },
                     "charlie": {
                         "password": "charlie",
-                        "roles": ["RegionalManager"]
+                        "roles": [
+                            "RegionalManager"
+                        ]
                     },
                     "david": {
                         "password": "david",
-                        "roles": ["FinanceApprover"]
+                        "roles": [
+                            "FinanceApprover"
+                        ]
                     },
                     "admin": {
                         "password": "admin",
-                        "roles": ["PricingAdministrator"]
+                        "roles": [
+                            "PricingAdministrator"
+                        ]
                     }
+                }
+            },
+            "llm":{
+                "kind":"openai",
+                "model":"openrouter/free",
+                "credentials":{
+                     "baseURL": "https://openrouter.ai/api/v1"
                 }
             }
         },
@@ -45,8 +67,10 @@
         }
     },
     "dependencies": {
+        "@cap-js/agents": "^0.9.11",
         "@cap-js/hana": "^2.8.3",
-        "@sap/cds": "^9"
+        "@sap/cds": "^9",
+        "axios": "^1.21.1"
     },
     "devDependencies": {
         "@cap-js/sqlite": "^2.4.3",

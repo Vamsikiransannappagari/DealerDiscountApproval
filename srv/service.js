@@ -1,4 +1,6 @@
 const cds=require('@sap/cds');
+const {sendPendingApprovalEvent} = require('./utils/alertNotification');
+const { SELECT, UPDATE, INSERT } = require('@sap/cds/lib/ql/cds-ql');
 
 module.exports=cds.service.impl(async function() {
 
@@ -175,6 +177,32 @@ module.exports=cds.service.impl(async function() {
         status: "PendingApproval", submittedAt: new Date()
     }).where({ ID });
 
+    // Notify the first responsible approver after database commit
+    const firstApproval = route[0];
+
+    if (firstApproval) {
+        req.on('succeeded', async () => {
+            try {
+                await sendPendingApprovalEvent({
+                    requestId: ID,
+                    requestNumber: request.requestNumber,
+                    approvalLevel: firstApproval.approvalLevel,
+                    approvalRole: firstApproval.approvalRole
+                });
+
+                console.log(
+                    `ANS notification sent for ${request.requestNumber}`
+                );
+
+            } catch (error) {
+                console.error(
+                    'ANS notification failed:',
+                    error.response?.data || error.message
+                );
+            }
+        });
+    }
+
     return SELECT.one.from(DiscountRequests).where({ ID });
 });
 
@@ -263,6 +291,71 @@ this.on("activatePrice", DiscountRequests, async (req) => {
     return SELECT.one.from(DiscountRequests).where({ ID });
 });
 
+this.on('deactivatePrice','PriceConditions',async(req)=>{
+    const {ID}=req.params[0];
+    const {reason}=req.data;
+    if(!reason){
+        return req.error(400,'Reason is required')
+    }
+    const condition=await SELECT.one.from(PriceConditions).where({ID});
+    await UPDATE(PriceConditions).set({status:'Inactive'}).where({ID});
+    await INSERT.into(PriceChangeHistory).entries({
+        fieldName:'status',
+        oldValue:'Active',
+        newValue:'Inactive',
+        changeReason:reason,
+        changedBy:req.user.id,
+        changedAt : new Date(),
+        priceCondition_ID:ID
+    })
+    return 'Price condition successfully deactivated'
+});
+
+this.on('extendPriceValidity','PriceConditions',async(req)=>{
+    const {ID}=req.params[0];
+    const {newValidTo,reason}=req.data;
+
+    if(!reason || !reason.trim()){
+        return req.error(400,'Reason is required');
+    } 
+    const condition= await SELECT.one.from(PriceConditions).where({ID});
+    if(!condition){
+        return req.error(404,'Price condition not found');
+
+    }
+    if(condition.status!=='Active'){
+        return req.error(400,'Only active price consitions can be extended');
+    }
+    if(!newValidTo){
+        return req.error(400,'New validity date is required');
+    }
+    if(newValidTo<=condition.validTo){
+        return req.error(400,'New validity date must be later than the existing validity date');
+
+    }
+    const overlap=await SELECT.one.from(PriceConditions).where({
+        model_ID:condition.model_ID,
+        region_ID:condition.region_ID,
+        salesChannel_ID:condition.salesChannel_ID,
+        dealer_ID:condition.dealer_ID,
+        validFrom:{'<=':newValidTo},
+        validTo:{'>=':condition.validFrom}
+    }).and({ID:{'!=':ID}});
+    if(overlap){
+        return req.error(400,'Cannot extend validity because another price condition overlaps');
+    }
+    await INSERT.into(PriceChangeHistory).entries({
+        priceCondition_ID:ID,
+        fieldName:'validTo',
+        oldValue: String(condition.validTo),
+        newValue: String(newValidTo),
+        reason:reason,
+        changedBy:req.user.id,
+        changedAt: new Date()
+    });
+    return 'Price condition validity extended successfully';
+
+})
 
 
 

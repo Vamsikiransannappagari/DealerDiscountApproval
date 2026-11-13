@@ -8,6 +8,7 @@ type NetPriceResult {
     belowFloor      : Boolean;
 }
 
+@odata
 // @requires : 'authenticated-user'
 service DealerService {
     // @restrict:[
@@ -22,7 +23,10 @@ service DealerService {
     //     {grant:['CREATE','UPDATE'],to:'PricingAnalyst'},
     //     {grant:'DELETE',to:'PricingAdministrator'}
     // ]
-    entity PriceConditions      as projection on d.PriceConditions;
+    entity PriceConditions      as projection on d.PriceConditions actions{
+        action deactivatePrice(reason:String) returns String;
+        action extendPriceValidity(newValidTo: Date,reason: String) returns String;
+    };
 
     // @restrict:[
     //     {grant:'READ',to:['PricingAnalyst', 'DealerSalesUser', 'RegionalManager', 'FinanceApprover', 'PricingAdministrator']},
