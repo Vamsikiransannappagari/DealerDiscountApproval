@@ -1,0 +1,67 @@
+{
+  "scopes": [
+    {
+      "name": "$XSAPPNAME.PricingAnalyst",
+      "description": "PricingAnalyst"
+    },
+    {
+      "name": "$XSAPPNAME.DealerSalesUser",
+      "description": "DealerSalesUser"
+    },
+    {
+      "name": "$XSAPPNAME.RegionalManager",
+      "description": "RegionalManager"
+    },
+    {
+      "name": "$XSAPPNAME.FinanceApprover",
+      "description": "FinanceApprover"
+    },
+    {
+      "name": "$XSAPPNAME.PricingAdministrator",
+      "description": "PricingAdministrator"
+    }
+  ],
+  "attributes": [],
+  "role-templates": [
+    {
+      "name": "PricingAnalyst",
+      "description": "generated",
+      "scope-references": [
+        "$XSAPPNAME.PricingAnalyst"
+      ],
+      "attribute-references": []
+    },
+    {
+      "name": "DealerSalesUser",
+      "description": "generated",
+      "scope-references": [
+        "$XSAPPNAME.DealerSalesUser"
+      ],
+      "attribute-references": []
+    },
+    {
+      "name": "RegionalManager",
+      "description": "generated",
+      "scope-references": [
+        "$XSAPPNAME.RegionalManager"
+      ],
+      "attribute-references": []
+    },
+    {
+      "name": "FinanceApprover",
+      "description": "generated",
+      "scope-references": [
+        "$XSAPPNAME.FinanceApprover"
+      ],
+      "attribute-references": []
+    },
+    {
+      "name": "PricingAdministrator",
+      "description": "generated",
+      "scope-references": [
+        "$XSAPPNAME.PricingAdministrator"
+      ],
+      "attribute-references": []
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 const cds=require('@sap/cds');
 const {sendPendingApprovalEvent} = require('./utils/alertNotification');
-const { SELECT, UPDATE, INSERT } = require('@sap/cds/lib/ql/cds-ql');
+
 
 module.exports=cds.service.impl(async function() {
 
@@ -245,9 +245,6 @@ this.on("rejectDiscount", DiscountRequests, async (req) => {
         .where({ discountRequest_ID: ID, decision: "Pending" }).orderBy("sequenceNumber asc");
     if (!pending) return req.reject(400, "No pending approval decision was found.");
 
-    if (!req.user.is(pending.approvalLevel))
-        return req.reject(403, "You are not authorised for this approval level.");
-
     await UPDATE(ApprovalDecisions).set({
         decision: "Rejected", comments, approverId: req.user.id, decisionDate: new Date() })
         .where({ ID: pending.ID });
@@ -357,7 +354,61 @@ this.on('extendPriceValidity','PriceConditions',async(req)=>{
 
 })
 
+// PRICE LISTS - AUTOMATIC CODE GENERATION
+this.before('CREATE', PriceLists, async (req) => {
 
+    // Get all existing price list codes
+    const existingLists = await SELECT.from(PriceLists)
+        .columns('priceListCode');
+
+    let maxNumber = 0;
+
+    // Find the highest numeric suffix
+    for (const list of existingLists) {
+        const match = list.priceListCode?.match(/^PL-(\d+)$/);
+
+        if (match) {
+            const number = Number(match[1]);
+
+            if (number > maxNumber) {
+                maxNumber = number;
+            }
+        }
+    }
+
+    // Generate the next code
+    const nextNumber = maxNumber + 1;
+
+    req.data.priceListCode =
+        `PL-${String(nextNumber).padStart(2, '0')}`;
+});
+
+ this.before('CREATE', PriceConditions, async (req) => {
+
+            // Get existing condition codes
+            const records = await SELECT.from(PriceConditions)
+                .columns('conditionCode');
+
+            // Find the highest existing number
+            let maxNumber = 0;
+
+            for (const record of records) {
+                const match = record.conditionCode?.match(/^PC-(\d+)$/);
+
+                if (match) {
+                    maxNumber = Math.max(maxNumber, Number(match[1]));
+                }
+            }
+
+            // Generate the next code
+            if (!req.data.conditionCode) {
+                const nextNumber = maxNumber + 1;
+
+                req.data.conditionCode =
+                    `PC-${String(nextNumber).padStart(3, '0')}`;
+            }
+
+        });
 
 
 
@@ -379,7 +430,102 @@ this.on('extendPriceValidity','PriceConditions',async(req)=>{
             }
 
         });
- 
+
+        this.before('CREATE', 'Models', async (req) => {
+
+    // Get the latest model code
+    const lastModel = await cds.run(
+        SELECT.one.from('dealerpricing.Models')
+            .columns('modelCode')
+            .orderBy('modelCode desc')
+    );
+
+    let nextNumber = 1;
+
+    if (lastModel && lastModel.modelCode) {
+        const lastNumber = parseInt(lastModel.modelCode.split('-')[1]);
+        nextNumber = lastNumber + 1;
+    }
+
+    // Automatically generate model code
+    req.data.modelCode = `MDL-${String(nextNumber).padStart(2, '0')}`;
+
+});
+
+    this.before('CREATE', Regions, async (req) => {
+
+        const lastRegion = await SELECT.one
+            .from(Regions)
+            .columns('regionCode')
+            .orderBy({ regionCode: 'desc' });
+
+        let nextNumber = 1;
+
+        if (lastRegion && lastRegion.regionCode) {
+            nextNumber = parseInt(lastRegion.regionCode.split('-')[1]) + 1;
+        }
+
+        req.data.regionCode = `REG-${String(nextNumber).padStart(2, '0')}`;
+
+    });
+
+    this.before('CREATE', 'Dealers', async (req) => {
+
+    const lastDealer = await SELECT.one
+        .from('dealerpricing.Dealers')
+        .columns('dealerCode')
+        .orderBy({ dealerCode: 'desc' });
+
+    let nextNumber = 1;
+
+    if (lastDealer && lastDealer.dealerCode) {
+        nextNumber = parseInt(lastDealer.dealerCode.split('-')[1]) + 1;
+    }
+
+    req.data.dealerCode = `DLR-${String(nextNumber).padStart(2, '0')}`;
+
+});
+
+this.before('CREATE', DiscountRequests, async (req) => {
+
+        const lastRequest = await SELECT.one
+            .from(DiscountRequests)
+            .columns('requestNumber')
+            .orderBy({ requestNumber: 'desc' });
+
+        let nextNumber = 1;
+
+        if (lastRequest && lastRequest.requestNumber) {
+            const parts = lastRequest.requestNumber.split('-');
+            nextNumber = parseInt(parts[2], 10) + 1;
+        }
+
+        req.data.requestNumber =
+            `DR-${new Date().getFullYear()}-${String(nextNumber).padStart(4, '0')}`;
+
+    });
+ this.before('CREATE', 'ApprovalMatrix', async (req) => {
+
+        // Get the last matrix record
+        const lastMatrix = await cds.run(
+            SELECT.one
+                .from('dealerpricing.ApprovalMatrix')
+                .columns('matrixCode')
+                .orderBy({ matrixCode: 'desc' })
+        );
+
+        let nextNumber = 1;
+
+        if (lastMatrix && lastMatrix.matrixCode) {
+            nextNumber =
+                parseInt(lastMatrix.matrixCode.split('-')[1]) + 1;
+        }
+
+        // Generate matrix code automatically
+        req.data.matrixCode =
+            `AM-${String(nextNumber).padStart(3, '0')}`;
+
+    });
         // PRICE CONDITION VALIDATIONS
 
         this.before(['CREATE', 'UPDATE'], PriceConditions, async (req) => {
@@ -408,11 +554,6 @@ this.on('extendPriceValidity','PriceConditions',async(req)=>{
             if (dealerMargin !== undefined &&
                 (dealerMargin < 0 || dealerMargin > 100)) {
                 req.error(400, 'Dealer margin must be between 0 and 100.');
-            }
-
-            if (!priceList_ID || !model_ID ||
-                !region_ID || !salesChannel_ID) {
-                req.error(400, 'Price list, model, region and sales channel are required.');
             }
 
             if (validFrom && validTo && validFrom >= validTo) {

@@ -4,7 +4,7 @@ using {cuid,managed} from '@sap/cds/common';
 
 entity PriceLists : cuid, managed {
 
-    priceListCode : String(30) @mandatory;
+    priceListCode : String(30) @readonly;
     name          : String(100) @mandatory;
     description   : String(500);
     currency      : CurrencyCode;
@@ -16,7 +16,7 @@ entity PriceLists : cuid, managed {
 
 entity PriceConditions :cuid,managed{
     costPrice : Money @mandatory;
-    conditionCode : String @mandatory;
+    conditionCode : String @readonly;
     basePrice : Money @mandatory;
     taxPercentage : Percentage @assert.range:[0,100];
     dealerMargin : Percentage @assert.range:[0,100];
@@ -27,9 +27,9 @@ entity PriceConditions :cuid,managed{
     validTo : Date @mandatory;
     status : PricingConditionStatus default 'Draft';
     priceList : Association to one PriceLists;
-    model : Association to one Models @mandatory;
-    region : Association to one Regions @mandatory;
-    salesChannel : Association to one SalesChannels @mandatory;
+    model : Association to one Models;
+    region : Association to one Regions;
+    salesChannel : Association to one SalesChannels;
     dealer : Association to one Dealers;
 }
 

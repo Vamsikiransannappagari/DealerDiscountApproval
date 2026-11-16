@@ -1,0 +1,516 @@
+### POST PriceList
+@baseUrl = http://localhost:4004/odata/v4/dealer
+POST {{baseUrl}}/PriceLists
+Authorization: Basic alice alice
+Content-Type: application/json
+
+{
+
+    "name": "Standard Price List",
+    "description": "Standard vehicle pricing",
+    "currency": "INR",
+    "validFrom": "2026-11-01",
+    "validTo": "2027-10-31"
+}
+
+### GET PriceList by ID
+GET {{baseUrl}}/PriceLists(e260cac6-543e-5016-abd9-4340a5b9b996)
+Authorization: Basic alice alice
+
+### PUT PriceList
+PUT {{baseUrl}}/PriceLists(e260cac6-543e-5016-abd9-4340a5b9b996)
+Authorization: Basic alice alice
+Content-Type: application/json
+
+{
+    "name": "Updated Standard Price List",
+    "description": "Updated vehicle pricing",
+    "currency": "INR",
+    "validFrom": "2026-11-01",
+    "validTo": "2027-12-31"
+}
+
+### DELETE PriceList
+DELETE {{baseUrl}}/PriceLists(2db49ace-5362-5758-8c3b-617268c6af8f)
+Authorization: Basic admin admin
+
+
+### POST PriceCondition
+POST {{baseUrl}}/PriceConditions
+Authorization: Basic alice alice
+Content-Type: application/json
+
+{
+    "costPrice": 1200000,
+    "basePrice": 1500000,
+    "taxPercentage": 18,
+    "dealerMargin": 5,
+    "discountType": "5",
+    "maximumDiscount": 10,
+    "currency": "INR",
+    "validFrom": "2026-11-01",
+    "validTo": "2027-10-31"
+
+}
+
+
+### GET All PriceConditions
+GET {{baseUrl}}/PriceConditions
+Authorization: Basic alice alice
+
+### PUT Update PriceCondition
+PUT {{baseUrl}}/PriceConditions(f78ea5bf-6ad8-5afb-b4bd-370520c12339)
+Authorization: Basic alice alice
+Content-Type: application/json
+
+{
+    "costPrice": 1250000,
+    "basePrice": 1550000,
+    "taxPercentage": 18,
+    "dealerMargin": 6,
+    "discountType": "5",
+    "maximumDiscount": 12,
+    "currency": "INR",
+    "validFrom": "2026-11-01",
+    "validTo": "2027-10-31"
+    
+}
+
+### DELETE PriceCondition
+DELETE {{baseUrl}}/PriceConditions(f78ea5bf-6ad8-5afb-b4bd-370520c12339)
+Authorization: Basic admin admin
+
+### POST Model
+POST {{baseUrl}}/Models
+Authorization: Basic admin admin
+Content-Type: application/json
+
+{
+    "modelName": "Aural X",
+    "productFamily": "SUV",
+    "description": "Premium SUV vehicle model"
+}
+
+### GET All Models
+GET {{baseUrl}}/Models
+Authorization: Basic alice alice
+
+### PUT Update Model
+PUT {{baseUrl}}/Models(d49df870-4e96-5d81-8f48-b7de5f7f6bce)
+Authorization: Basic admin admin
+Content-Type: application/json
+
+{
+    "modelName": "Aural X Updated",
+    "productFamily": "SUV",
+    "description": "Updated premium SUV vehicle model"
+}
+
+### DELETE Model
+DELETE {{baseUrl}}/Models(d49df870-4e96-5d81-8f48-b7de5f7f6bce)
+Authorization: Basic admin admin
+
+### POST Region
+POST {{baseUrl}}/Regions
+Authorization: Basic admin admin
+Content-Type: application/json
+
+{
+    "regionName": "South",
+    "country": "India",
+    "state": "Karnataka"  
+}
+
+### GET All Regions
+GET {{baseUrl}}/Regions
+Authorization: Basic admin admin
+
+### PUT Region
+PUT {{baseUrl}}/Regions(320c6c39-cc4b-50fe-84f0-eb66bd70f0b8)
+Authorization: Basic admin admin
+Content-Type: application/json
+
+{
+    "regionCode": "REG-01",
+    "regionName": "South Zone",
+    "country": "India",
+    "state": "Tamil Nadu"
+}
+
+### DELETE Region
+DELETE {{baseUrl}}/Regions(320c6c39-cc4b-50fe-84f0-eb66bd70f0b8)
+Authorization: Basic admin admin
+
+
+### POST SalesChannel
+POST {{baseUrl}}/SalesChannels
+Authorization: Basic admin admin
+Content-Type: application/json
+
+{
+    "channelName": "Online",
+    "description": "Direct online vehicle sales",
+    "status": "Active"
+}
+
+### GET All SalesChannels
+GET {{baseUrl}}/SalesChannels
+Authorization: Basic admin admin
+
+### PUT SalesChannel
+PUT {{baseUrl}}/SalesChannels(5fd39c5b-5e84-5504-a7f5-208cfabc8b29)
+Authorization: Basic admin admin
+Content-Type: application/json
+
+{
+    "channelCode": "CHN-01",
+    "channelName": "Retail",
+    "description": "Authorized retail and showroom dealerships",
+    "status": "Active"
+}
+
+### DELETE SalesChannel
+DELETE {{baseUrl}}/SalesChannels(5fd39c5b-5e84-5504-a7f5-208cfabc8b29)
+Authorization: Basic admin admin
+
+### POST Dealers
+POST {{baseUrl}}/Dealers
+Authorization: Basic admin admin
+Content-Type: application/json
+
+{
+    "dealerName": "Chennai Auto Motors",
+    "contactPerson": "Ramesh Kumar",
+    "email": "ramesh@chennaiauto.in",
+    "phone": "9876543210",
+    "address": "Chennai, India",
+    "region_ID": "6f32038e-7896-5a57-aaf3-d04ecef181b4"
+}
+
+### GET All Dealers
+GET {{baseUrl}}/Dealers
+Authorization: Basic admin admin
+
+### PUT Update Dealer
+PUT {{baseUrl}}/Dealers(559dc28f-84a4-5a5f-a42a-4b58f7a3966b)
+Authorization: Basic admin admin
+Content-Type: application/json
+
+{
+    "dealerName": "Sree Auto Wheels Updated",
+    "contactPerson": "Ramesh Gowda",
+    "email": "ramesh.updated@sreeautowheels.in",
+    "phone": "9845011111",
+    "address": "Bengaluru, Karnataka, India",
+    "status": "Active",
+    "region_ID": "320c6c39-cc4b-50fe-84f0-eb66bd70f0b8"
+}
+
+### DELETE Dealer
+DELETE {{baseUrl}}/Dealers(559dc28f-84a4-5a5f-a42a-4b58f7a3966b)
+Authorization: Basic admin admin
+
+### POST DiscountRequests
+POST {{baseUrl}}/DiscountRequests
+Authorization: Basic bob bob
+Content-Type: application/json
+
+{
+    "requestDate": "2026-11-13",
+    "requestedBy": "sneha.reddy@autodealer.in",
+    "reason": "Dealer requested a launch discount for Aural X.",
+    "supportingDetails": "Customer requested a 5% discount for bulk booking.",
+    "totalBasePrice": 2300000,
+    "totalDiscountPrice": 115000,
+    "totalNetPrice": 2185000,
+    "overallMargin": 17.53,
+    "status": "Draft",
+    "validFrom": "2026-11-15",
+    "validTo": "2027-03-31",
+    "dealer_ID": "559dc28f-84a4-5a5f-a42a-4b58f7a3966b",
+    "region_ID": "320c6c39-cc4b-50fe-84f0-eb66bd70f0b8",
+    "salesChannel_ID": "5fd39c5b-5e84-5504-a7f5-208cfabc8b29"
+}
+
+### GET All DiscountRequests
+GET {{baseUrl}}/DiscountRequests
+Authorization: Basic bob bob
+
+### PUT DiscountRequest
+PUT {{baseUrl}}/DiscountRequests(16cbcdeb-22d4-4c55-add3-c4f874d59f2c)
+Authorization: Basic bob bob
+Content-Type: application/json
+
+{
+    "reason": "Dealer requested a revised launch discount for Aural X.",
+    "supportingDetails": "Updated customer quotation with revised discount justification.",
+    "validFrom": "2026-11-20",
+    "validTo": "2027-04-30",
+    "dealer_ID": "559dc28f-84a4-5a5f-a42a-4b58f7a3966b"
+}
+
+### DELETE DiscountRequest
+DELETE {{baseUrl}}/DiscountRequests(16cbcdeb-22d4-4c55-add3-c4f874d59f2c)
+Authorization: Basic admin admin
+
+### POST DiscountLine
+POST {{baseUrl}}/DiscountLines
+Authorization: Basic bob bob
+Content-Type: application/json
+
+{
+    "costPrice": 850000,
+    "quantity": 2,
+    "basePrice": 1200000,
+    "taxPercentage": 18,
+    "dealerMargin": 10,
+    "discountType": "Percentage",
+    "discountPercentage": 5,
+    "discountRequest_ID": "8d9ae254-d135-53bc-855a-79abfc29ffba",
+    "model_ID": "d49df870-4e96-5d81-8f48-b7de5f7f6bce",
+    "priceCondition_ID": "f78ea5bf-6ad8-5afb-b4bd-370520c12339"
+}
+
+### GET All DiscountLines
+GET {{baseUrl}}/DiscountLines
+Authorization: Basic bob bob
+
+### PUT DiscountLine
+PUT {{baseUrl}}/DiscountLines(751484e6-d5fc-54d3-9731-c518be88ebbf)
+Authorization: Basic bob bob
+Content-Type: application/json
+
+{
+    "costPrice": 850000,
+    "quantity": 3,
+    "basePrice": 1200000,
+    "taxPercentage": 18,
+    "dealerMargin": 12,
+    "discountType": "Percentage",
+    "discountPercentage": 7
+}
+
+### DELETE DiscountLine
+DELETE {{baseUrl}}/DiscountLines(751484e6-d5fc-54d3-9731-c518be88ebbf)
+Authorization: Basic admin admin
+
+### POST ApprovalMatrix
+POST {{baseUrl}}/ApprovalMatrix
+Authorization: Basic admin admin
+Content-Type: application/json
+
+{
+    "productFamily": "Electric SUV",
+    "minimumDiscount": 15,
+    "maximumDiscount": 20,
+    "minimumMargin": 10,
+    "approvalLevel": "FinanceApprover",
+    "approvalSequence": 2,
+    "approvalRole": "Finance Approver",
+    "requiresException": true,
+    "validFrom": "2026-01-01",
+    "validTo": "2026-12-31",
+    "status": "Active",
+    "region_ID": "320c6c39-cc4b-50fe-84f0-eb66bd70f0b8"
+}
+
+### GET ApprovalMatrix
+GET {{baseUrl}}/ApprovalMatrix
+Authorization: Basic admin admin
+
+### PUT ApprovalMatrix
+PUT {{baseUrl}}/ApprovalMatrix(96c421a2-8457-53c2-98ea-a9ff891dc6be)
+Authorization: Basic admin admin
+Content-Type: application/json
+
+{
+    "productFamily": "Premium SUV",
+    "minimumDiscount": 0,
+    "maximumDiscount": 6,
+    "minimumMargin": 16,
+    "approvalLevel": "RegionalManager",
+    "approvalSequence": 1,
+    "approvalRole": "Regional Manager",
+    "requiresException": false,
+    "validFrom": "2026-01-01",
+    "validTo": "2026-12-31",
+    "status": "Active",
+    "region_ID": "320c6c39-cc4b-50fe-84f0-eb66bd70f0b8"
+}
+### DELETE ApprovalMatrix
+DELETE {{baseUrl}}/ApprovalMatrix(96c421a2-8457-53c2-98ea-a9ff891dc6be)
+Authorization: Basic admin admin
+
+### POST ApprovalDecisions
+POST {{baseUrl}}/ApprovalDecisions
+Authorization: Basic charlie charlie
+Content-Type: application/json
+
+{
+    "approverId": "EMP-RM-225",
+    "approvalRole": "RegionalManager",
+    "approvalLevel": "RegionalManager",
+    "decision": "Pending",
+    "comments": "Awaiting regional manager review.",
+    "sequenceNumber": 1,
+    "discountRequest_ID": "8d9ae254-d135-53bc-855a-79abfc29ffba",
+    "approvalMatrix_ID": "96c421a2-8457-53c2-98ea-a9ff891dc6be"
+}
+### GET ApprovalDecisions
+GET {{baseUrl}}/ApprovalDecisions
+Authorization: Basic charlie charlie
+
+### PUT ApprovalDecisions
+PUT {{baseUrl}}/ApprovalDecisions(49bca9ef-81b5-55e4-bbaf-37f1776804ac)
+Authorization: Basic charlie charlie
+Content-Type: application/json
+
+{
+    "approverId": "EMP-RM-225",
+    "approvalRole": "RegionalManager",
+    "approvalLevel": "RegionalManager",
+    "decision": "Pending",
+    "comments": "Awaiting regional manager review.",
+    "sequenceNumber": 1,
+    "discountRequest_ID": "8d9ae254-d135-53bc-855a-79abfc29ffba",
+    "approvalMatrix_ID": "96c421a2-8457-53c2-98ea-a9ff891dc6be"
+}
+
+### DELETE ApprovalDecisions
+DELETE {{baseUrl}}/ApprovalDecisions(49bca9ef-81b5-55e4-bbaf-37f1776804ac)
+Authorization: Basic admin admin
+
+### POST PricePublicationLogs
+POST {{baseUrl}}/PricePublicationLogs
+Authorization: Basic admin admin
+Content-Type: application/json
+
+{
+    "retryCount": 0,
+    "publicationReference": "PUB-2026-0011",
+    "targetSystem": "S4HANA-PRD",
+    "responseMessage": "Awaiting publication.",
+    "lastAttemptAt": "2026-11-13T10:00:00Z",
+    "discountRequest_ID": "8d9ae254-d135-53bc-855a-79abfc29ffba"
+}
+
+### GET PricePublicationLogs
+GET {{baseUrl}}/PricePublicationLogs
+Authorization: Basic admin admin
+
+### PUT PricePublicationLogs
+PUT {{baseUrl}}/PricePublicationLogs(ab7ceaaf-1d30-5999-94a2-c95deaeecbab)
+Authorization: Basic admin admin
+Content-Type: application/json
+
+{
+    "retryCount": 1,
+    "publicationReference": "PUB-2026-0001",
+    "targetSystem": "S4HANA-PRD",
+    "status": "Success",
+    "responseMessage": "Price condition published successfully.",
+    "publishedAt": "2026-11-13T11:00:00Z",
+    "lastAttemptAt": "2026-11-13T10:55:00Z",
+    "discountRequest_ID": "8d9ae254-d135-53bc-855a-79abfc29ffba"
+}
+### PUT PricePublicationLogs
+DELETE {{baseUrl}}/PricePublicationLogs(ab7ceaaf-1d30-5999-94a2-c95deaeecbab)
+Authorization: Basic admin admin
+
+### POST PricePublicationLogs
+POST {{baseUrl}}/PriceChangeHistory
+Authorization: Basic admin admin
+Content-Type: application/json
+
+{
+    "fieldName": "basePrice",
+    "oldValue": "2500000",
+    "newValue": "2700000",
+    "changeReason": "Updated price based on market conditions"
+}
+
+### GET PricePublicationLogs
+GET {{baseUrl}}/PriceChangeHistory
+Authorization: Basic admin admin
+
+### PUT PricePublicationLogs
+PUT {{baseUrl}}/PriceChangeHistory(0683521a-d217-5ffb-861c-4dd2bbc4b76d)
+Authorization: Basic admin admin
+Content-Type: application/json
+
+{
+    "fieldName": "basePrice",
+    "oldValue": "2500000",
+    "newValue": "2800000",
+    "changeReason": "Corrected price after management review",
+    "changedBy": "finance.approver@company.com"
+}
+### DELETE PricePublicationLogs
+DELETE {{baseUrl}}/PriceChangeHistory(0683521a-d217-5ffb-861c-4dd2bbc4b76d)
+Authorization: Basic admin admin
+
+
+
+### Submit Discount
+POST {{baseUrl}}/DiscountRequests(8d9ae254-d135-53bc-855a-79abfc29ffba)/DealerService.submitDiscount
+Authorization: Basic bob bob
+Content-Type: application/json
+
+{}
+
+### Approve Discount
+POST {{baseUrl}}/DiscountRequests(f8ee25a7-25cd-57fd-9f62-aeb5d3d6fbda)/DealerService.approveDiscount
+Authorization: Basic david david
+Content-Type: application/json
+
+{
+    "comments": "Discount approved by the regional manager."
+}
+
+### Reject Discount
+POST {{baseUrl}}/DiscountRequests(f8ee25a7-25cd-57fd-9f62-aeb5d3d6fbda)/DealerService.rejectDiscount
+Authorization: Basic david david
+Content-Type: application/json
+
+{
+    "comments": "Rejected because the requested 12% discount exceeds the permitted margin threshold."
+}
+
+
+### Activate Price
+POST {{baseUrl}}/DiscountRequests(fe4d0ed1-ed8b-526d-859e-d7bd94a83afd)/DealerService.activatePrice
+Authorization: Basic admin admin
+Content-Type: application/json
+
+{}
+
+
+### Calculate Net Price
+GET {{baseUrl}}/calculateNetPrice(priceCondition=f78ea5bf-6ad8-5afb-b4bd-370520c12339,discountType='Percentage',discountValue=3)
+Authorization: Basic alice alice
+
+### Validate Margin
+GET {{baseUrl}}/validateMargin(priceCondition=f78ea5bf-6ad8-5afb-b4bd-370520c12339,discountPercentage=3)
+Authorization: Basic alice alice
+
+
+
+
+
+
+### POST Action PriceConditions
+POST {{baseUrl}}/PriceConditions(f78ea5bf-6ad8-5afb-b4bd-370520c12339)/DealerService.deactivatePrice
+Content-Type: application/json
+
+{
+    "reason": "Price discontinued due to market changes"
+}
+
+### POST Action PriceConditions
+POST {{baseUrl}}/PriceConditions(cbad86cc-5b5c-5fcd-b047-e4472a5f90cb)/DealerService.extendPriceValidity
+Content-Type: application/json
+
+{
+    "newValidTo": "2027-12-31",
+    "reason": "Validity extended based on management approval"
+}
