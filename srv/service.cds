@@ -109,5 +109,6 @@ service DealerService {
     function validateMargin(priceCondition: UUID, discountPercentage: Decimal) returns NetPriceResult;
 
     //Job Scheduler
+    @requires: 'PricingAdministrator'
     action   activateAndExpirePrices() returns String;
 }

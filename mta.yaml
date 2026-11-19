@@ -1,16 +1,21 @@
 _schema-version: 3.3.0
 ID: dealerdiscountapproval
-version: 1.0.0
+version: 1.0.3
 description: "Pricing and Dealer Discount Approval"
+
 parameters:
   enable-parallel-deployments: true
+
 build-parameters:
   before-all:
     - builder: custom
       commands:
         - npm ci
         - npx cds build --production
+
 modules:
+
+  # CAP Backend
   - name: dealerdiscountapproval-srv
     type: nodejs
     path: gen/srv
@@ -20,13 +25,15 @@ modules:
     build-parameters:
       builder: npm-ci
     provides:
-      - name: srv-api # required by consumers of CAP services (e.g. approuter)
+      - name: srv-api
         properties:
           srv-url: ${default-url}
     requires:
       - name: dealerdiscountapproval-db
       - name: dealerdiscountapproval-auth
+      - name: dealerdiscountapproval-jobscheduler
 
+  # HANA Database Deployer
   - name: dealerdiscountapproval-db-deployer
     type: hdb
     path: gen/db
@@ -34,6 +41,8 @@ modules:
       buildpack: nodejs_buildpack
     requires:
       - name: dealerdiscountapproval-db
+
+  # Application Router
   - name: dealerdiscountapproval
     type: approuter.nodejs
     path: .deploy/app-router
@@ -45,7 +54,7 @@ modules:
       - name: srv-api
         group: destinations
         properties:
-          name: srv-api # must be used in xs-app.json as well
+          name: srv-api
           url: ~{srv-url}
           forwardAuthToken: true
       - name: dealerdiscountapproval-auth
@@ -56,11 +65,15 @@ modules:
           app-uri: ${default-uri}
 
 resources:
+
+  # HANA HDI Container
   - name: dealerdiscountapproval-db
     type: com.sap.xs.hdi-container
     parameters:
       service: hana
       service-plan: hdi-shared
+
+  # XSUAA Authentication
   - name: dealerdiscountapproval-auth
     type: org.cloudfoundry.managed-service
     parameters:
@@ -72,30 +85,46 @@ resources:
         tenant-mode: dedicated
         oauth2-configuration:
           credential-types:
-            - "binding-secret"
-            - "x509"
+            - binding-secret
+            - x509
           redirect-uris:
             - https://*~{app-api/app-uri}/**
         role-collections:
+
           - name: 'PricingAnalyst (dealerdiscountapproval ${org}-${space})'
-            description: 'generated'
+            description: 'Pricing Analyst access'
             role-template-references:
               - '$XSAPPNAME.PricingAnalyst'
+
           - name: 'DealerSalesUser (dealerdiscountapproval ${org}-${space})'
-            description: 'generated'
+            description: 'Dealer Sales User access'
             role-template-references:
               - '$XSAPPNAME.DealerSalesUser'
+
           - name: 'RegionalManager (dealerdiscountapproval ${org}-${space})'
-            description: 'generated'
+            description: 'Regional Manager access'
             role-template-references:
               - '$XSAPPNAME.RegionalManager'
+
           - name: 'FinanceApprover (dealerdiscountapproval ${org}-${space})'
-            description: 'generated'
+            description: 'Finance Approver access'
             role-template-references:
               - '$XSAPPNAME.FinanceApprover'
+
           - name: 'PricingAdministrator (dealerdiscountapproval ${org}-${space})'
-            description: 'generated'
+            description: 'Pricing Administrator access'
             role-template-references:
               - '$XSAPPNAME.PricingAdministrator'
+
+          - name: 'JOBSCHEDULER (dealerdiscountapproval ${org}-${space})'
+            description: 'Job Scheduler access'
+            role-template-references:
+              - '$XSAPPNAME.JOBSCHEDULER'
     requires:
       - name: app-api
+
+  # Reuse existing Job Scheduler instance
+  - name: dealerdiscountapproval-jobscheduler
+    type: org.cloudfoundry.existing-service
+    parameters:
+      service-name: jobscheduler

@@ -18,7 +18,10 @@
     },
     {
       "name": "$XSAPPNAME.PricingAdministrator",
-      "description": "PricingAdministrator"
+      "description": "PricingAdministrator",
+      "grant-as-authority-to-apps": [
+        "$XSSERVICENAME(jobschedular)"
+      ]
     }
   ],
   "attributes": [],

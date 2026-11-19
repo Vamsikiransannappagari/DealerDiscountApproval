@@ -1,77 +1,104 @@
 {
- "name": "dealerdiscountapproval",
- "version": "1.0.0",
- "description": "Pricing and Dealer Discount Approval",
- "license": "ISC",
- "author": "",
- "type": "commonjs",
- "main": "index.js",
- "scripts": {
-  "start": "cds-serve",
-  "watch": "cds watch"
- },
-
-"cds": {
-  "agents": {
-    "retention": "7d",
-    "quotas": {
-      "maxLLMCallTimeout": "60s"
-    }
+  "name": "dealerdiscountapproval",
+  "version": "1.0.0",
+  "description": "Pricing and Dealer Discount Approval",
+  "homepage": "https://github.com/Vamsikiransannappagari/DealerDiscountApproval#readme",
+  "bugs": {
+    "url": "https://github.com/Vamsikiransannappagari/DealerDiscountApproval/issues"
   },
-  "requires": {
-    "auth": {
-      "kind": "mocked",
-      "users": {
-        "alice": {
-          "password": "alice",
-          "roles": ["PricingAnalyst"]
-        },
-        "bob": {
-          "password": "bob",
-          "roles": ["DealerSalesUser"]
-        },
-        "charlie": {
-          "password": "charlie",
-          "roles": ["RegionalManager"]
-        },
-        "david": {
-          "password": "david",
-          "roles": ["FinanceApprover"]
-        },
-        "admin": {
-          "password": "admin",
-          "roles": ["PricingAdministrator"]
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Vamsikiransannappagari/DealerDiscountApproval.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "workspaces": [
+    "app/*"
+  ],
+  "scripts": {
+    "start": "cds-serve",
+    "watch": "cds watch",
+    "watch-dealerdiscountapproval": "cds watch --open dealerdiscountapproval/index.html?sap-ui-xx-viewCache=false --livereload false",
+    "undeploy": "cf undeploy dealerdiscountapproval --delete-services --delete-service-keys --delete-service-brokers",
+    "build": "rimraf resources mta_archives && mbt build --mtar archive",
+    "deploy": "cf deploy mta_archives/archive.mtar --retries 1"
+  },
+  "dependencies": {
+    "@cap-js/agents": "^0.9.11",
+    "@cap-js/hana": "^2",
+    "@sap/cds": "^9",
+    "@sap/xssec": "^4",
+    "axios": "^1.21.1"
+  },
+  "devDependencies": {
+    "@cap-js/sqlite": "^2.4.3",
+    "@sap/cds-dk": "^9.9.8",
+    "cds-plugin-ui5": "^0.17.0",
+    "mbt": "^1.2.49",
+    "rimraf": "^5.0.5"
+  },
+  "cds": {
+    "agents": {
+      "retention": "7d",
+      "quotas": {
+        "maxLLMCallTimeout": "60s"
+      }
+    },
+    "requires": {
+      "auth": {
+        "kind": "mocked",
+        "users": {
+          "alice": {
+            "password": "alice",
+            "roles": [
+              "PricingAnalyst"
+            ]
+          },
+          "bob": {
+            "password": "bob",
+            "roles": [
+              "DealerSalesUser"
+            ]
+          },
+          "charlie": {
+            "password": "charlie",
+            "roles": [
+              "RegionalManager"
+            ]
+          },
+          "david": {
+            "password": "david",
+            "roles": [
+              "FinanceApprover"
+            ]
+          },
+          "admin": {
+            "password": "admin",
+            "roles": [
+              "PricingAdministrator"
+            ]
+          }
+        }
+      },
+      "llm": {
+        "kind": "openai",
+        "model": "openrouter/free",
+        "credentials": {
+          "baseURL": "https://openrouter.ai/api/v1"
         }
       }
     },
-    "llm": {
-      "kind": "openai",
-      "model": "openrouter/free",
-      "credentials": {
-        "baseURL": "https://openrouter.ai/api/v1"
+    "[production]": {
+      "requires": {
+        "auth": {
+          "kind": "xsuaa"
+        }
       }
+    },
+    "server": {
+      "index": true
     }
-  },
-  "[production]": {
-    "requires": {
-      "auth": {
-        "kind": "xsuaa"
-      }
-    }
-  },
-  "server": {
-    "index": true
   }
-},
- "dependencies": {
-  "@cap-js/agents": "^0.9.11",
-  "@cap-js/hana": "^2.8.3",
-  "@sap/cds": "^9",
-  "axios": "^1.21.1",
-  "@sap/xssec": "^4"
- },
- "devDependencies": {
-  "@cap-js/sqlite": "^2.4.3",
-  "@sap/cds-dk": "^9.9.8"
- }
 }

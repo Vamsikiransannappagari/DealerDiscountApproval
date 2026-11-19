@@ -1237,85 +1237,277 @@ this.after('UPDATE', PriceConditions, async (result, req) => {
 });
 
         //jobscheduler
-        this.on("activateAndExpirePrices", async (req) => {
-            const t = today();
-            let activated = 0, requestsExpired = 0, conditionsExpired = 0;
-            const failed = [];
+     
+this.on("activateAndExpirePrices", async (req) => {
 
-            // 1. Activate approved requests whose start date has arrived
-            const toActivate = await SELECT.from(DiscountRequests).where({
-                status: "Approved", validFrom: { "<=": t }, validTo: { ">=": t } });
+    const t = today();
 
-            requestLoop:
-            for (const request of toActivate) {
-                const label = request.requestNumber || request.ID;
-                try {
-                    const lines = await SELECT.from(DiscountLines).where({ discountRequest_ID: request.ID });
+    let priceListsActivated = 0;
+    let priceListsExpired = 0;
+    let activated = 0;
+    let requestsExpired = 0;
+    let conditionsExpired = 0;
 
-                    // overlap check, same as activatePrice
-                    for (const line of lines) {
-                        const cond = await SELECT.one.from(PriceConditions).where({ ID: line.priceCondition_ID });
-                        const others = await SELECT.from(PriceConditions).where({
-                            status: "Active", model_ID: cond.model_ID, region_ID: cond.region_ID,
-                            salesChannel_ID: cond.salesChannel_ID, dealer_ID: cond.dealer_ID });
-                        const overlap = others.find(o => o.ID !== cond.ID &&
-                            request.validFrom <= o.validTo && request.validTo >= o.validFrom);
-                        if (overlap) {
-                            failed.push(`${label}: overlap with ${overlap.conditionCode}`);
-                            continue requestLoop;   // skip this request, go to the next one
-                        }
+    const failed = [];
+
+    // --------------------------------------------------
+    // 1. ACTIVATE PRICE LISTS
+    // Draft -> Active
+    // --------------------------------------------------
+
+    const listsToActivate = await SELECT.from(PriceLists).where({
+        status: "Draft",
+        validFrom: { "<=": t },
+        validTo: { ">=": t }
+    });
+
+    for (const list of listsToActivate) {
+        try {
+            await UPDATE(PriceLists)
+                .set({ status: "Active" })
+                .where({ ID: list.ID });
+
+            await INSERT.into(PriceChangeHistory).entries({
+                fieldName: "status",
+                oldValue: "Draft",
+                newValue: "Active",
+                changeReason: "Price list automatically activated by Job Scheduler",
+                changedBy: "JobScheduler",
+                changedAt: new Date()
+            });
+
+            priceListsActivated++;
+
+        } catch (e) {
+            failed.push(
+                `PriceList ${list.priceListCode}: ${e.message}`
+            );
+        }
+    }
+
+
+    // --------------------------------------------------
+    // 2. EXPIRE PRICE LISTS
+    // Active -> Inactive
+    // --------------------------------------------------
+
+    const listsToExpire = await SELECT.from(PriceLists).where({
+        status: "Active",
+        validTo: { "<": t }
+    });
+
+    for (const list of listsToExpire) {
+        try {
+            await UPDATE(PriceLists)
+                .set({ status: "Inactive" })
+                .where({ ID: list.ID });
+
+            await INSERT.into(PriceChangeHistory).entries({
+                fieldName: "status",
+                oldValue: "Active",
+                newValue: "Inactive",
+                changeReason: "Price list validity ended; automatically deactivated by Job Scheduler",
+                changedBy: "JobScheduler",
+                changedAt: new Date()
+            });
+
+            priceListsExpired++;
+
+        } catch (e) {
+            failed.push(
+                `PriceList ${list.priceListCode}: ${e.message}`
+            );
+        }
+    }
+
+
+    // --------------------------------------------------
+    // 3. ACTIVATE APPROVED DISCOUNT REQUESTS
+    // Approved -> Active
+    // --------------------------------------------------
+
+    const approvedRequests = await SELECT.from(DiscountRequests).where({
+        status: "Approved",
+        validFrom: { "<=": t },
+        validTo: { ">=": t }
+    });
+
+    requestLoop:
+    for (const request of approvedRequests) {
+
+        try {
+
+            const lines = await SELECT.from(DiscountLines).where({
+                discountRequest_ID: request.ID
+            });
+
+            for (const line of lines) {
+
+                const cond = await SELECT.one.from(PriceConditions).where({
+                    ID: line.priceCondition_ID
+                });
+
+                if (!cond) {
+                    failed.push(
+                        `Request ${request.requestNumber}: PriceCondition ${line.priceCondition_ID} not found`
+                    );
+                    continue requestLoop;
+                }
+
+                const activeConditions = await SELECT.from(PriceConditions).where({
+                    model_ID: cond.model_ID,
+                    region_ID: cond.region_ID,
+                    salesChannel_ID: cond.salesChannel_ID,
+                    dealer_ID: cond.dealer_ID,
+                    status: "Active"
+                });
+
+                const hasOverlap = activeConditions.some(existing => {
+
+                    if (existing.ID === cond.ID) {
+                        return false;
                     }
 
-                    await UPDATE(DiscountRequests)
-                        .set({ status: "Active", activatedAt: new Date() })
-                        .where({ ID: request.ID });
+                    return (
+                        existing.validFrom <= cond.validTo &&
+                        existing.validTo >= cond.validFrom
+                    );
+                });
 
-                    await INSERT.into(PricePublicationLogs).entries({
-                        discountRequest_ID: request.ID, status: "Pending",
-                        retryCount: 0, targetSystem: "PRICING_SYSTEM" });
-
-                    await INSERT.into(PriceChangeHistory).entries({
-                        fieldName: "status", oldValue: "Approved", newValue: "Active",
-                        changeReason: `Request ${label} activated (scheduled job)`,
-                        changedBy: "JobScheduler", changedAt: new Date() });
-
-                    activated++;
-                } catch (e) {
-                    failed.push(`${label}: ${e.message}`);
+                if (hasOverlap) {
+                    failed.push(
+                        `Request ${request.requestNumber}: overlapping active price condition found`
+                    );
+                    continue requestLoop;
                 }
             }
 
-            // 2. Expire requests whose end date has passed
-            const oldRequests = await SELECT.from(DiscountRequests).where({
-                status: { in: ["Active", "Approved"] }, validTo: { "<": t } });
+            await UPDATE(DiscountRequests)
+                .set({
+                    status: "Active",
+                    activatedAt: new Date()
+                })
+                .where({ ID: request.ID });
 
-            for (const r of oldRequests) {
-                await UPDATE(DiscountRequests).set({ status: "Expired" }).where({ ID: r.ID });
-                await INSERT.into(PriceChangeHistory).entries({
-                    fieldName: "status", oldValue: r.status, newValue: "Expired",
-                    changeReason: "Validity ended (scheduled job)",
-                    changedBy: "JobScheduler", changedAt: new Date() });
-                requestsExpired++;
-            }
+            await INSERT.into(PricePublicationLogs).entries({
+                discountRequest_ID: request.ID,
+                status: "Pending",
+                retryCount: 0,
+                targetSystem: "PRICING_SYSTEM"
+            });
 
-            // 3. Expire price conditions whose end date has passed
-            const oldConds = await SELECT.from(PriceConditions).where({
-                status: "Active", validTo: { "<": t } });
+            await INSERT.into(PriceChangeHistory).entries({
+                fieldName: "status",
+                oldValue: "Approved",
+                newValue: "Active",
+                changeReason: "Discount request automatically activated by Job Scheduler",
+                changedBy: "JobScheduler",
+                changedAt: new Date()
+            });
 
-            for (const c of oldConds) {
-                await UPDATE(PriceConditions).set({ status: "Expired" }).where({ ID: c.ID });
-                await INSERT.into(PriceChangeHistory).entries({
-                    fieldName: "status", oldValue: "Active", newValue: "Expired",
-                    changeReason: "Validity ended (scheduled job)",
-                    changedBy: "JobScheduler", changedAt: new Date(),
-                    priceCondition_ID: c.ID });
-                conditionsExpired++;
-            }
+            activated++;
 
-            return `Activated: ${activated}, requests expired: ${requestsExpired}, ` +
-                `conditions expired: ${conditionsExpired}, failed: ${failed.length}` +
-                (failed.length ? ` (${failed.join("; ")})` : "");
-        });
+        } catch (e) {
+            failed.push(
+                `Request ${request.requestNumber}: ${e.message}`
+            );
+        }
+    }
+
+
+    // --------------------------------------------------
+    // 4. EXPIRE DISCOUNT REQUESTS
+    // Active / Approved -> Expired
+    // --------------------------------------------------
+
+    const expiredRequests = await SELECT.from(DiscountRequests).where({
+        status: { in: ["Active", "Approved"] },
+        validTo: { "<": t }
+    });
+
+    for (const request of expiredRequests) {
+
+        try {
+
+            const oldStatus = request.status;
+
+            await UPDATE(DiscountRequests)
+                .set({ status: "Expired" })
+                .where({ ID: request.ID });
+
+            await INSERT.into(PriceChangeHistory).entries({
+                fieldName: "status",
+                oldValue: oldStatus,
+                newValue: "Expired",
+                changeReason: "Discount request validity ended",
+                changedBy: "JobScheduler",
+                changedAt: new Date()
+            });
+
+            requestsExpired++;
+
+        } catch (e) {
+            failed.push(
+                `Request ${request.requestNumber}: ${e.message}`
+            );
+        }
+    }
+
+
+    // --------------------------------------------------
+    // 5. EXPIRE PRICE CONDITIONS
+    // Active -> Expired
+    // --------------------------------------------------
+
+    const expiredConditions = await SELECT.from(PriceConditions).where({
+        status: "Active",
+        validTo: { "<": t }
+    });
+
+    for (const condition of expiredConditions) {
+
+        try {
+
+            await UPDATE(PriceConditions)
+                .set({ status: "Expired" })
+                .where({ ID: condition.ID });
+
+            await INSERT.into(PriceChangeHistory).entries({
+                priceCondition_ID: condition.ID,
+                fieldName: "status",
+                oldValue: "Active",
+                newValue: "Expired",
+                changeReason: "Price condition validity ended",
+                changedBy: "JobScheduler",
+                changedAt: new Date()
+            });
+
+            conditionsExpired++;
+
+        } catch (e) {
+            failed.push(
+                `PriceCondition ${condition.conditionCode}: ${e.message}`
+            );
+        }
+    }
+
+
+    // --------------------------------------------------
+    // 6. RETURN JOB SCHEDULER SUMMARY
+    // --------------------------------------------------
+
+    return (
+        `Price Lists Activated: ${priceListsActivated}, ` +
+        `Price Lists Deactivated: ${priceListsExpired}, ` +
+        `Discount Requests Activated: ${activated}, ` +
+        `Discount Requests Expired: ${requestsExpired}, ` +
+        `Price Conditions Expired: ${conditionsExpired}, ` +
+        `Failed: ${failed.length}` +
+        (failed.length ? ` | Errors: ${failed.join("; ")}` : "")
+    );
+
+});
+
 
         const today = () => new Date().toISOString().slice(0, 10);
 
