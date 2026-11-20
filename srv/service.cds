@@ -13,10 +13,13 @@ type NetPriceResult {
 service DealerService {
     @restrict:[
         {grant:'READ',to:['PricingAnalyst','DealerSalesUser','RegionalManager','FinanceApprover','PricingAdministrator']},
-        {grant:['CREATE','UPDATE'],to:'PricingAnalyst'},
-        {grant:'DELETE',to:'PricingAdministrator'}
+        {grant:['CREATE','UPDATE','DELETE'],to:'PricingAnalyst'},
+        {grant:'DELETE',to:'PricingAdministrator'},
+        {grant: 'activatePriceList',to: ['PricingAnalyst', 'PricingAdministrator']}
     ]
-    entity PriceLists           as projection on d.PriceLists;
+    entity PriceLists           as projection on d.PriceLists actions{
+        action activatePriceList() returns String;
+    };
 
     @restrict:[
         {grant:'READ',to:['PricingAnalyst', 'DealerSalesUser', 'RegionalManager', 'FinanceApprover', 'PricingAdministrator']},

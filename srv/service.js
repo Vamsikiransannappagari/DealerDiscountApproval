@@ -308,6 +308,60 @@ this.on('deactivatePrice','PriceConditions',async(req)=>{
     return 'Price condition successfully deactivated'
 });
 
+
+this.on("activatePriceList", "PriceLists", async (req) => {
+
+    const { ID } = req.params[0];
+
+    // 1. Get Price List
+    const priceList = await cds.run(
+        SELECT.one.from("PriceLists")
+            .where({ ID: ID })
+    );
+
+    if (!priceList) {
+        return req.reject(404, "Price List not found.");
+    }
+
+    // 2. Check Price List status
+    if (priceList.status !== "Draft") {
+        return req.reject(400, "Only Draft Price Lists can be activated.");
+    }
+
+    // 3. Get Price Conditions
+    const conditions = await cds.run(
+        SELECT.from("PriceConditions")
+            .where({ priceList_ID: ID })
+    );
+
+    if (!conditions || conditions.length === 0) {
+        return req.reject(400, "Add at least one Price Condition before activation.");
+    }
+
+    // 4. Validate dates
+    if (priceList.validFrom > priceList.validTo) {
+        return req.reject(400, "Valid To date must be greater than or equal to Valid From date.");
+    }
+
+    // 5. Check valid conditions
+    const validConditions = conditions.filter(condition =>
+        condition.status !== "Inactive" &&
+        condition.status !== "Expired"
+    );
+
+    if (validConditions.length === 0) {
+        return req.reject(400, "No valid Price Conditions are available for activation.");
+    }
+
+    // 6. Update Price List status
+    await cds.run(
+        UPDATE("PriceLists")
+            .set({ status: "Active" })
+            .where({ ID: ID })
+    );
+
+    return "Price List activated successfully.";
+});
 this.on('extendPriceValidity','PriceConditions',async(req)=>{
     const {ID}=req.params[0];
     const {newValidTo,reason}=req.data;
@@ -761,109 +815,6 @@ this.before('CREATE', DiscountRequests, async (req) => {
 
         });
 
-        // PRICE CONDITIONS - DUPLICATE COMPOSITE KEY VALIDATION
-
-        this.before(['CREATE', 'UPDATE'], PriceConditions, async (req) => {
-
-            let oldRecord = null;
-
-            if (req.event === 'UPDATE') {
-                oldRecord = await SELECT.one
-                    .from(PriceConditions)
-                    .where({ ID: getID(req) });
-            }
-
-            const data = {
-                ...(oldRecord || {}),
-                ...req.data
-            };
-
-            const {
-                model_ID,
-                region_ID,
-                salesChannel_ID,
-                dealer_ID
-            } = data;
-
-            if (!model_ID || !region_ID || !salesChannel_ID) return;
-
-            const existing = await SELECT.from(PriceConditions)
-                .where({
-                    model_ID,
-                    region_ID,
-                    salesChannel_ID,
-                    dealer_ID: dealer_ID ?? null
-                });
-
-            const duplicate = existing.some(record =>
-                record.ID !== oldRecord?.ID
-            );
-
-            if (duplicate) {
-                return req.reject(
-                    400,
-                    'A price condition already exists for this model, region, channel and dealer.'
-                );
-            }
-
-        });
-
-        // PRICE CONDITIONS - OVERLAPPING VALIDITY VALIDATION
-
-        this.before(['CREATE', 'UPDATE'], PriceConditions, async (req) => {
-
-            let oldRecord = null;
-
-            if (req.event === 'UPDATE') {
-                oldRecord = await SELECT.one
-                    .from(PriceConditions)
-                    .where({ ID: getID(req) });
-            }
-
-            const data = {
-                ...(oldRecord || {}),
-                ...req.data
-            };
-
-            const {
-                model_ID,
-                region_ID,
-                salesChannel_ID,
-                dealer_ID,
-                validFrom,
-                validTo
-            } = data;
-
-            if (!model_ID || !region_ID ||
-                !salesChannel_ID || !validFrom || !validTo) {
-                return;
-            }
-
-            const existing = await SELECT.from(PriceConditions)
-                .where({
-                    model_ID,
-                    region_ID,
-                    salesChannel_ID,
-                    dealer_ID: dealer_ID ?? null
-                });
-
-            const overlap = existing.find(record => {
-
-                if (record.ID === oldRecord?.ID) return false;
-
-                return validFrom <= record.validTo &&
-                    validTo >= record.validFrom;
-
-            });
-
-            if (overlap) {
-                return req.reject(
-                    400,
-                    `Validity period overlaps with condition ${overlap.conditionCode}.`
-                );
-            }
-
-        });
             // PRICE LISTS - UNIQUE CODE VALIDATION
 
 this.before(['CREATE', 'UPDATE'], PriceLists, async (req) => {
