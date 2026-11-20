@@ -311,56 +311,76 @@ this.on('deactivatePrice','PriceConditions',async(req)=>{
 
 this.on("activatePriceList", "PriceLists", async (req) => {
 
-    const { ID } = req.params[0];
+    const ID = getID(req);
+    const t = today();
 
-    // 1. Get Price List
-    const priceList = await cds.run(
-        SELECT.one.from("PriceLists")
-            .where({ ID: ID })
-    );
+    const priceList = await SELECT.one
+        .from(PriceLists)
+        .where({ ID });
 
     if (!priceList) {
         return req.reject(404, "Price List not found.");
     }
 
-    // 2. Check Price List status
     if (priceList.status !== "Draft") {
         return req.reject(400, "Only Draft Price Lists can be activated.");
     }
 
-    // 3. Get Price Conditions
-    const conditions = await cds.run(
-        SELECT.from("PriceConditions")
-            .where({ priceList_ID: ID })
-    );
+    if (priceList.validFrom > priceList.validTo) {
+        return req.reject(400, "Invalid Price List validity period.");
+    }
 
-    if (!conditions || conditions.length === 0) {
+    const conditions = await SELECT.from(PriceConditions)
+        .where({ priceList_ID: ID });
+
+    if (!conditions.length) {
         return req.reject(400, "Add at least one Price Condition before activation.");
     }
 
-    // 4. Validate dates
-    if (priceList.validFrom > priceList.validTo) {
-        return req.reject(400, "Valid To date must be greater than or equal to Valid From date.");
-    }
-
-    // 5. Check valid conditions
-    const validConditions = conditions.filter(condition =>
+    const eligibleConditions = conditions.filter(condition =>
         condition.status !== "Inactive" &&
         condition.status !== "Expired"
     );
 
-    if (validConditions.length === 0) {
-        return req.reject(400, "No valid Price Conditions are available for activation.");
+    if (!eligibleConditions.length) {
+        return req.reject(400, "No eligible Price Conditions are available.");
     }
 
-    // 6. Update Price List status
-    await cds.run(
-        UPDATE("PriceLists")
-            .set({ status: "Active" })
-            .where({ ID: ID })
-    );
+    // Activate the parent Price List
+    await UPDATE(PriceLists)
+        .set({ status: "Active" })
+        .where({ ID });
 
-    return "Price List activated successfully.";
+    // Update child conditions according to their validity dates
+    for (const condition of eligibleConditions) {
+
+        let newStatus = condition.status;
+
+        if (condition.validTo < t) {
+            newStatus = "Expired";
+        } else if (condition.validFrom <= t && condition.validTo >= t) {
+            newStatus = "Active";
+        }
+
+        if (newStatus !== condition.status) {
+
+            await UPDATE(PriceConditions)
+                .set({ status: newStatus })
+                .where({ ID: condition.ID });
+
+            await INSERT.into(PriceChangeHistory).entries({
+                priceCondition_ID: condition.ID,
+                fieldName: "status",
+                oldValue: condition.status,
+                newValue: newStatus,
+                changeReason: "Price condition status updated during Price List activation",
+                changedBy: req.user?.id || "unknown",
+                changedAt: new Date()
+            });
+        }
+    }
+
+    return "Price List and eligible Price Conditions processed successfully.";
 });
 this.on('extendPriceValidity','PriceConditions',async(req)=>{
     const {ID}=req.params[0];
@@ -1189,20 +1209,70 @@ this.after('UPDATE', PriceConditions, async (result, req) => {
 
         //jobscheduler
      
+
 this.on("activateAndExpirePrices", async (req) => {
 
-    const t = today();
+    // INDIA LOCAL DATE
+    const dateParts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+    }).formatToParts(new Date());
 
+    const dateValues = {};
+    dateParts.forEach(part => {
+        dateValues[part.type] = part.value;
+    });
+
+    const t = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
+
+    // COUNTERS
     let priceListsActivated = 0;
     let priceListsExpired = 0;
-    let activated = 0;
-    let requestsExpired = 0;
+    let conditionsActivated = 0;
     let conditionsExpired = 0;
+    let conditionsDeactivated = 0;
+    let requestsActivated = 0;
+    let requestsExpired = 0;
 
     const failed = [];
 
+    // COMMON FUNCTION TO UPDATE CONDITION STATUS AND HISTORY
+    const updateConditionStatus = async (
+        condition,
+        newStatus,
+        reason
+    ) => {
+
+        if (condition.status === newStatus) return;
+
+        await UPDATE(PriceConditions)
+            .set({ status: newStatus })
+            .where({ ID: condition.ID });
+
+        await INSERT.into(PriceChangeHistory).entries({
+            priceCondition_ID: condition.ID,
+            fieldName: "status",
+            oldValue: condition.status,
+            newValue: newStatus,
+            changeReason: reason,
+            changedBy: "JobScheduler",
+            changedAt: new Date()
+        });
+
+        if (newStatus === "Active") {
+            conditionsActivated++;
+        } else if (newStatus === "Expired") {
+            conditionsExpired++;
+        } else if (newStatus === "Inactive") {
+            conditionsDeactivated++;
+        }
+    };
+
+
     // --------------------------------------------------
-    // 1. ACTIVATE PRICE LISTS
+    // 1. ACTIVATE VALID DRAFT PRICE LISTS
     // Draft -> Active
     // --------------------------------------------------
 
@@ -1213,7 +1283,9 @@ this.on("activateAndExpirePrices", async (req) => {
     });
 
     for (const list of listsToActivate) {
+
         try {
+
             await UPDATE(PriceLists)
                 .set({ status: "Active" })
                 .where({ ID: list.ID });
@@ -1222,58 +1294,154 @@ this.on("activateAndExpirePrices", async (req) => {
                 fieldName: "status",
                 oldValue: "Draft",
                 newValue: "Active",
-                changeReason: "Price list automatically activated by Job Scheduler",
+                changeReason: "Price List automatically activated by Job Scheduler",
                 changedBy: "JobScheduler",
                 changedAt: new Date()
             });
 
             priceListsActivated++;
 
+            // Update associated child conditions
+            const childConditions = await SELECT.from(PriceConditions)
+                .where({
+                    priceList_ID: list.ID,
+                    status: "Draft"
+                });
+
+            for (const condition of childConditions) {
+
+                if (condition.validTo < t) {
+
+                    await updateConditionStatus(
+                        condition,
+                        "Expired",
+                        "Price Condition validity ended"
+                    );
+
+                } else if (
+                    condition.validFrom <= t &&
+                    condition.validTo >= t
+                ) {
+
+                    await updateConditionStatus(
+                        condition,
+                        "Active",
+                        "Price Condition activated with its Price List"
+                    );
+                }
+                // Future-dated conditions remain Draft
+            }
+
         } catch (e) {
+
             failed.push(
-                `PriceList ${list.priceListCode}: ${e.message}`
+                `Price List ${list.priceListCode}: ${e.message}`
             );
         }
     }
 
 
     // --------------------------------------------------
-    // 2. EXPIRE PRICE LISTS
-    // Active -> Inactive
+    // 2. ACTIVATE FUTURE-DATED CONDITIONS
+    // Draft -> Active
+    // Parent Price List must already be Active
+    // --------------------------------------------------
+
+    const activeLists = await SELECT.from(PriceLists)
+        .where({ status: "Active" });
+
+    for (const list of activeLists) {
+
+        try {
+
+            const futureConditions = await SELECT.from(PriceConditions)
+                .where({
+                    priceList_ID: list.ID,
+                    status: "Draft",
+                    validFrom: { "<=": t },
+                    validTo: { ">=": t }
+                });
+
+            for (const condition of futureConditions) {
+
+                await updateConditionStatus(
+                    condition,
+                    "Active",
+                    "Future-dated Price Condition became valid"
+                );
+            }
+
+        } catch (e) {
+
+            failed.push(
+                `Future conditions for ${list.priceListCode}: ${e.message}`
+            );
+        }
+    }
+
+
+    // --------------------------------------------------
+    // 3. EXPIRE PRICE LISTS
+    // Active / Draft -> Inactive
     // --------------------------------------------------
 
     const listsToExpire = await SELECT.from(PriceLists).where({
-        status: "Active",
+        status: { in: ["Active", "Draft"] },
         validTo: { "<": t }
     });
 
     for (const list of listsToExpire) {
+
         try {
+
+            const oldStatus = list.status;
+
             await UPDATE(PriceLists)
                 .set({ status: "Inactive" })
                 .where({ ID: list.ID });
 
             await INSERT.into(PriceChangeHistory).entries({
                 fieldName: "status",
-                oldValue: "Active",
+                oldValue: oldStatus,
                 newValue: "Inactive",
-                changeReason: "Price list validity ended; automatically deactivated by Job Scheduler",
+                changeReason: "Price List validity ended; automatically deactivated",
                 changedBy: "JobScheduler",
                 changedAt: new Date()
             });
 
             priceListsExpired++;
 
+            // Update all remaining active/draft child conditions
+            const childConditions = await SELECT.from(PriceConditions)
+                .where({
+                    priceList_ID: list.ID,
+                    status: { in: ["Active", "Draft"] }
+                });
+
+            for (const condition of childConditions) {
+
+                const newStatus = condition.validTo < t
+                    ? "Expired"
+                    : "Inactive";
+
+                await updateConditionStatus(
+                    condition,
+                    newStatus,
+                    "Parent Price List validity ended"
+                );
+            }
+
         } catch (e) {
+
             failed.push(
-                `PriceList ${list.priceListCode}: ${e.message}`
+                `Price List expiration ${list.priceListCode}: ${e.message}`
             );
         }
     }
 
 
     // --------------------------------------------------
-    // 3. ACTIVATE APPROVED DISCOUNT REQUESTS
+    // 4. ACTIVATE APPROVED DISCOUNT REQUESTS
     // Approved -> Active
     // --------------------------------------------------
 
@@ -1292,26 +1460,44 @@ this.on("activateAndExpirePrices", async (req) => {
                 discountRequest_ID: request.ID
             });
 
+            if (!lines.length) {
+                failed.push(
+                    `Request ${request.requestNumber}: No discount lines found`
+                );
+                continue;
+            }
+
             for (const line of lines) {
 
-                const cond = await SELECT.one.from(PriceConditions).where({
-                    ID: line.priceCondition_ID
-                });
+                const cond = await SELECT.one.from(PriceConditions)
+                    .where({ ID: line.priceCondition_ID });
 
                 if (!cond) {
+
                     failed.push(
-                        `Request ${request.requestNumber}: PriceCondition ${line.priceCondition_ID} not found`
+                        `Request ${request.requestNumber}: Price Condition not found`
                     );
+
                     continue requestLoop;
                 }
 
-                const activeConditions = await SELECT.from(PriceConditions).where({
-                    model_ID: cond.model_ID,
-                    region_ID: cond.region_ID,
-                    salesChannel_ID: cond.salesChannel_ID,
-                    dealer_ID: cond.dealer_ID,
-                    status: "Active"
-                });
+                if (cond.status !== "Active") {
+
+                    failed.push(
+                        `Request ${request.requestNumber}: Condition ${cond.conditionCode} is not Active`
+                    );
+
+                    continue requestLoop;
+                }
+
+                const activeConditions = await SELECT.from(PriceConditions)
+                    .where({
+                        model_ID: cond.model_ID,
+                        region_ID: cond.region_ID,
+                        salesChannel_ID: cond.salesChannel_ID,
+                        dealer_ID: cond.dealer_ID,
+                        status: "Active"
+                    });
 
                 const hasOverlap = activeConditions.some(existing => {
 
@@ -1320,15 +1506,17 @@ this.on("activateAndExpirePrices", async (req) => {
                     }
 
                     return (
-                        existing.validFrom <= cond.validTo &&
-                        existing.validTo >= cond.validFrom
+                        request.validFrom <= existing.validTo &&
+                        request.validTo >= existing.validFrom
                     );
                 });
 
                 if (hasOverlap) {
+
                     failed.push(
-                        `Request ${request.requestNumber}: overlapping active price condition found`
+                        `Request ${request.requestNumber}: Overlapping active Price Condition found`
                     );
+
                     continue requestLoop;
                 }
             }
@@ -1351,14 +1539,15 @@ this.on("activateAndExpirePrices", async (req) => {
                 fieldName: "status",
                 oldValue: "Approved",
                 newValue: "Active",
-                changeReason: "Discount request automatically activated by Job Scheduler",
+                changeReason: "Discount Request automatically activated by Job Scheduler",
                 changedBy: "JobScheduler",
                 changedAt: new Date()
             });
 
-            activated++;
+            requestsActivated++;
 
         } catch (e) {
+
             failed.push(
                 `Request ${request.requestNumber}: ${e.message}`
             );
@@ -1367,7 +1556,7 @@ this.on("activateAndExpirePrices", async (req) => {
 
 
     // --------------------------------------------------
-    // 4. EXPIRE DISCOUNT REQUESTS
+    // 5. EXPIRE DISCOUNT REQUESTS
     // Active / Approved -> Expired
     // --------------------------------------------------
 
@@ -1390,7 +1579,7 @@ this.on("activateAndExpirePrices", async (req) => {
                 fieldName: "status",
                 oldValue: oldStatus,
                 newValue: "Expired",
-                changeReason: "Discount request validity ended",
+                changeReason: "Discount Request validity ended",
                 changedBy: "JobScheduler",
                 changedAt: new Date()
             });
@@ -1398,6 +1587,7 @@ this.on("activateAndExpirePrices", async (req) => {
             requestsExpired++;
 
         } catch (e) {
+
             failed.push(
                 `Request ${request.requestNumber}: ${e.message}`
             );
@@ -1406,12 +1596,12 @@ this.on("activateAndExpirePrices", async (req) => {
 
 
     // --------------------------------------------------
-    // 5. EXPIRE PRICE CONDITIONS
-    // Active -> Expired
+    // 6. EXPIRE REMAINING PRICE CONDITIONS
+    // Active / Draft -> Expired
     // --------------------------------------------------
 
     const expiredConditions = await SELECT.from(PriceConditions).where({
-        status: "Active",
+        status: { in: ["Active", "Draft"] },
         validTo: { "<": t }
     });
 
@@ -1419,45 +1609,40 @@ this.on("activateAndExpirePrices", async (req) => {
 
         try {
 
-            await UPDATE(PriceConditions)
-                .set({ status: "Expired" })
-                .where({ ID: condition.ID });
-
-            await INSERT.into(PriceChangeHistory).entries({
-                priceCondition_ID: condition.ID,
-                fieldName: "status",
-                oldValue: "Active",
-                newValue: "Expired",
-                changeReason: "Price condition validity ended",
-                changedBy: "JobScheduler",
-                changedAt: new Date()
-            });
-
-            conditionsExpired++;
+            await updateConditionStatus(
+                condition,
+                "Expired",
+                "Price Condition validity ended"
+            );
 
         } catch (e) {
+
             failed.push(
-                `PriceCondition ${condition.conditionCode}: ${e.message}`
+                `Price Condition ${condition.conditionCode}: ${e.message}`
             );
         }
     }
 
 
     // --------------------------------------------------
-    // 6. RETURN JOB SCHEDULER SUMMARY
+    // 7. RETURN JOB SCHEDULER SUMMARY
     // --------------------------------------------------
 
     return (
+        `Execution Date (India): ${t}, ` +
         `Price Lists Activated: ${priceListsActivated}, ` +
         `Price Lists Deactivated: ${priceListsExpired}, ` +
-        `Discount Requests Activated: ${activated}, ` +
-        `Discount Requests Expired: ${requestsExpired}, ` +
+        `Price Conditions Activated: ${conditionsActivated}, ` +
+        `Price Conditions Deactivated: ${conditionsDeactivated}, ` +
         `Price Conditions Expired: ${conditionsExpired}, ` +
+        `Discount Requests Activated: ${requestsActivated}, ` +
+        `Discount Requests Expired: ${requestsExpired}, ` +
         `Failed: ${failed.length}` +
         (failed.length ? ` | Errors: ${failed.join("; ")}` : "")
     );
 
 });
+
 
 
         const today = () => new Date().toISOString().slice(0, 10);
